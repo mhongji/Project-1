@@ -8,12 +8,9 @@ format: pdf
 editor: visual
 ---
 
-## Data processing
-
-## Step 1
+## Step 1: Data preprocessing
 
 ```{r}
-# ---- Step 1 ---------------------------------------------------------------
 library(tidyverse)
 
 url <- "https://www4.stat.ncsu.edu/~online/datasets/EDU01a.csv"
@@ -28,10 +25,9 @@ edu01a <- read_csv(url, show_col_types = FALSE) %>%
 head(edu01a, 5)              # display first 5 rows
 ```
 
-## Step 2
+## Step 2: wide string to long string
 
 ```{r}
-# ---- Step 2: wide → long --------------------------------------------------
 library(tidyr)
 
 edu01a_long <- edu01a %>% 
@@ -64,11 +60,9 @@ long_updated <- edu01a_long %>%
 head(long_updated, 5)
 ```
 
-
 ## Step 4: Separate county vs non-county data & add classes
 
 ```{r}
-# ---- Step 4: county vs. non-county ---------------------------------------
 library(dplyr)
 library(stringr)
 
@@ -90,7 +84,6 @@ head(state_tibble,  10)
 ## Step 5: Create new variable
 
 ```{r}
-# ---- Step 5: tag counties with 2-letter state code -----------------------
 library(stringr)
 
 county_tibble <- county_tibble %>% 
@@ -102,8 +95,6 @@ county_tibble <- county_tibble %>%
 ## Step 6: Add “division” to non-county (state) rows
 
 ```{r}
-# ---- Step 6: add “division” to non-county (state) rows ------------------
-
 # ❶ build a lookup vector  ——  U.S. Census Bureau’s nine divisions
 division_tbl <- tribble(
   ~state, ~division,
