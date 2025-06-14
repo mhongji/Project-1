@@ -89,7 +89,7 @@ head(county_tibble, 10)
 head(state_tibble,  10)
 ```
 
-### Step 5: Create new variable
+## Step 5: Create new variable
 
 ```{r}
 # ---- Step 5: tag counties with 2-letter state code -----------------------
@@ -100,3 +100,43 @@ county_tibble <- county_tibble %>%
     state = str_sub(area_name, -2, -1)   # grab the “DD” after the comma
   )
 ```
+
+## Step 6: Add “division” to non-county (state) rows
+
+```{r}
+# ---- Step 6: add “division” to non-county (state) rows ------------------
+
+# ❶ build a lookup vector  ——  U.S. Census Bureau’s nine divisions
+division_tbl <- tribble(
+  ~state, ~division,
+  "CT","New England",   "ME","New England",   "MA","New England",
+  "NH","New England",   "RI","New England",   "VT","New England",
+  "NJ","Middle Atlantic","NY","Middle Atlantic","PA","Middle Atlantic",
+  "IL","East North Central","IN","East North Central","MI","East North Central",
+  "OH","East North Central","WI","East North Central",
+  "IA","West North Central","KS","West North Central","MN","West North Central",
+  "MO","West North Central","NE","West North Central","ND","West North Central","SD","West North Central",
+  "DE","South Atlantic","FL","South Atlantic","GA","South Atlantic","MD","South Atlantic",
+  "NC","South Atlantic","SC","South Atlantic","VA","South Atlantic","DC","South Atlantic","WV","South Atlantic",
+  "AL","East South Central","KY","East South Central","MS","East South Central","TN","East South Central",
+  "AR","West South Central","LA","West South Central","OK","West South Central","TX","West South Central",
+  "AZ","Mountain","CO","Mountain","ID","Mountain","MT","Mountain",
+  "NV","Mountain","NM","Mountain","UT","Mountain","WY","Mountain",
+  "AK","Pacific","CA","Pacific","HI","Pacific","OR","Pacific","WA","Pacific"
+)
+
+state_tibble <- state_tibble %>% 
+  mutate(
+    state  = str_sub(area_name, -2, -1),        # “NC”, “SC”, etc.
+    division = case_when(
+      state %in% division_tbl$state ~
+        division_tbl$division[match(state, division_tbl$state)],
+      TRUE ~ "ERROR"                            # UNITED STATES, Puerto Rico, etc.
+    )
+  )
+
+# quickly inspect
+head(county_tibble, 10)
+head(state_tibble,  10)
+```
+
