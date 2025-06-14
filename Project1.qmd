@@ -17,28 +17,26 @@ url <- "https://www4.stat.ncsu.edu/~online/datasets/EDU01a.csv"
 
 edu01a <- read_csv(url, show_col_types = FALSE) %>% 
   select(
-    area_name = Area_name,   # rename
+    area_name = Area_name,   
     STCOU,
-    ends_with("D")           # keep every column ending in “D”
+    ends_with("D")          
   )
 
-head(edu01a, 5)              # display first 5 rows
+head(edu01a, 5)              
 ```
 
 ## Step 2: wide string to long string
 
 ```{r}
 library(tidyr)
-
 edu01a_long <- edu01a %>% 
   pivot_longer(
-    cols  = -c(area_name, STCOU),   # every “D” column
-    names_to  = "raw_var",          # original census column name
-    values_to = "enrollment",       # numeric value
-    values_drop_na = TRUE           # drop empty cells, if any
+    cols  = -c(area_name, STCOU),   
+    names_to  = "raw_var",          
+    values_to = "enrollment",       
+    values_drop_na = TRUE          
   )
-
-head(edu01a_long, 5)                # verify first 5 rows
+head(edu01a_long, 5)               
 ```
 
 ## Step 3: Parse variable name string
@@ -49,13 +47,13 @@ long_updated <- edu01a_long %>%
     # last two digits before the "D"
     yr_two      = substr(raw_var, nchar(raw_var) - 2, nchar(raw_var) - 1),  # e.g. "97" or "02"
     year        = as.integer(
-                   if_else(as.integer(yr_two) <= 30,  # 00-30 → 2000-2030
+                   if_else(as.integer(yr_two) <= 30,  
                            paste0("20", yr_two),
-                           paste0("19", yr_two))      # 31-99 → 1931-1999
+                           paste0("19", yr_two))      
                  ),
-    measurement = substr(raw_var, 1, 7)               # first 3 chars + next 4 digits
+    measurement = substr(raw_var, 1, 7)               
   ) %>% 
-  select(-yr_two)                                     # helper no longer needed
+  select(-yr_two)                                     
 
 head(long_updated, 5)
 ```
@@ -66,11 +64,10 @@ head(long_updated, 5)
 library(dplyr)
 library(stringr)
 
-# rows whose Area_name ends “, XX” → county measurements
 county_idx <- grep(", \\w\\w$", long_updated$area_name)
 
 county_tibble <- long_updated[county_idx, ] %>% 
-  mutate(area_name = str_trim(area_name))          # tidy up trailing spaces
+  mutate(area_name = str_trim(area_name))          
 class(county_tibble) <- c("county", class(county_tibble))
 
 state_tibble  <- long_updated[-county_idx, ]
@@ -85,47 +82,58 @@ head(state_tibble,  10)
 
 ```{r}
 library(stringr)
-
-county_tibble <- county_tibble %>% 
+new_county_tibble <- county_tibble %>% 
   mutate(
-    state = str_sub(area_name, -2, -1)   # grab the “DD” after the comma
+    state = str_sub(area_name, -2, -1) 
   )
+head(new_county_tibble, 10)
 ```
 
-## Step 6: Add “division” to non-county (state) rows
+## Step 6: Create new "division" variables
 
 ```{r}
-# ❶ build a lookup vector  ——  U.S. Census Bureau’s nine divisions
-division_tbl <- tribble(
-  ~state, ~division,
-  "CT","New England",   "ME","New England",   "MA","New England",
-  "NH","New England",   "RI","New England",   "VT","New England",
-  "NJ","Middle Atlantic","NY","Middle Atlantic","PA","Middle Atlantic",
-  "IL","East North Central","IN","East North Central","MI","East North Central",
-  "OH","East North Central","WI","East North Central",
-  "IA","West North Central","KS","West North Central","MN","West North Central",
-  "MO","West North Central","NE","West North Central","ND","West North Central","SD","West North Central",
-  "DE","South Atlantic","FL","South Atlantic","GA","South Atlantic","MD","South Atlantic",
-  "NC","South Atlantic","SC","South Atlantic","VA","South Atlantic","DC","South Atlantic","WV","South Atlantic",
-  "AL","East South Central","KY","East South Central","MS","East South Central","TN","East South Central",
-  "AR","West South Central","LA","West South Central","OK","West South Central","TX","West South Central",
-  "AZ","Mountain","CO","Mountain","ID","Mountain","MT","Mountain",
-  "NV","Mountain","NM","Mountain","UT","Mountain","WY","Mountain",
-  "AK","Pacific","CA","Pacific","HI","Pacific","OR","Pacific","WA","Pacific"
+state_division <- c(
+  "CONNECTICUT" = "New England", "MAINE" = "New England", "MASSACHUSETTS" = "New England",
+  "NEW HAMPSHIRE" = "New England", "RHODE ISLAND" = "New England", "VERMONT" = "New England",
+  
+  "NEW JERSEY" = "Mid-Atlantic", "NEW YORK" = "Mid-Atlantic", "PENNSYLVANIA" = "Mid-Atlantic",
+  
+  "ILLINOIS" = "East North Central", "INDIANA" = "East North Central", "MICHIGAN" = "East North Central",
+  "OHIO" = "East North Central", "WISCONSIN" = "East North Central",
+  
+  "IOWA" = "West North Central", "KANSAS" = "West North Central", "MINNESOTA" = "West North Central",
+  "MISSOURI" = "West North Central", "NEBRASKA" = "West North Central",
+  "NORTH DAKOTA" = "West North Central", "SOUTH DAKOTA" = "West North Central",
+  
+  "DELAWARE" = "South Atlantic", "DISTRICT OF COLUMBIA" = "South Atlantic", "District of Columbia" = "South Atlantic", "FLORIDA" = "South Atlantic",
+  "GEORGIA" = "South Atlantic", "MARYLAND" = "South Atlantic", "NORTH CAROLINA" = "South Atlantic",
+  "SOUTH CAROLINA" = "South Atlantic", "VIRGINIA" = "South Atlantic", "WEST VIRGINIA" = "South Atlantic",
+  
+  "ALABAMA" = "East South Central", "KENTUCKY" = "East South Central",
+  "MISSISSIPPI" = "East South Central", "TENNESSEE" = "East South Central",
+  
+  "ARKANSAS" = "West South Central", "LOUISIANA" = "West South Central",
+  "OKLAHOMA" = "West South Central", "TEXAS" = "West South Central",
+  
+  "ARIZONA" = "Mountain", "COLORADO" = "Mountain", "IDAHO" = "Mountain",
+  "MONTANA" = "Mountain", "NEVADA" = "Mountain", "NEW MEXICO" = "Mountain",
+  "UTAH" = "Mountain", "WYOMING" = "Mountain",
+  
+  "ALASKA" = "Pacific", "CALIFORNIA" = "Pacific", "HAWAII" = "Pacific",
+  "OREGON" = "Pacific", "WASHINGTON" = "Pacific"
 )
 
-state_tibble <- state_tibble %>% 
+
+# 2. Create division column in your non-county tibble
+division <- state_tibble %>%
   mutate(
-    state  = str_sub(area_name, -2, -1),        # “NC”, “SC”, etc.
-    division = case_when(
-      state %in% division_tbl$state ~
-        division_tbl$division[match(state, division_tbl$state)],
-      TRUE ~ "ERROR"                            # UNITED STATES, Puerto Rico, etc.
+    division = if_else(
+      area_name %in% names(state_division),
+      state_division[area_name],
+      "ERROR"
     )
   )
-
-# quickly inspect
-head(county_tibble, 10)
-head(state_tibble,  10)
+# Show example with "UNITED STATES"
+head(division)
 ```
 
