@@ -95,37 +95,176 @@ county_tibble <- county_tibble %>%
 ## Step 6: Add “division” to non-county (state) rows
 
 ```{r}
-# ❶ build a lookup vector  ——  U.S. Census Bureau’s nine divisions
-division_tbl <- tribble(
-  ~state, ~division,
-  "CT","New England",   "ME","New England",   "MA","New England",
-  "NH","New England",   "RI","New England",   "VT","New England",
-  "NJ","Middle Atlantic","NY","Middle Atlantic","PA","Middle Atlantic",
-  "IL","East North Central","IN","East North Central","MI","East North Central",
-  "OH","East North Central","WI","East North Central",
-  "IA","West North Central","KS","West North Central","MN","West North Central",
-  "MO","West North Central","NE","West North Central","ND","West North Central","SD","West North Central",
-  "DE","South Atlantic","FL","South Atlantic","GA","South Atlantic","MD","South Atlantic",
-  "NC","South Atlantic","SC","South Atlantic","VA","South Atlantic","DC","South Atlantic","WV","South Atlantic",
-  "AL","East South Central","KY","East South Central","MS","East South Central","TN","East South Central",
-  "AR","West South Central","LA","West South Central","OK","West South Central","TX","West South Central",
-  "AZ","Mountain","CO","Mountain","ID","Mountain","MT","Mountain",
-  "NV","Mountain","NM","Mountain","UT","Mountain","WY","Mountain",
-  "AK","Pacific","CA","Pacific","HI","Pacific","OR","Pacific","WA","Pacific"
-)
+# ---- STEP 6 · rebuild & test division mapping ----------------------------
+library(dplyr)
+library(rvest)
+library(stringr)
+library(tidyr)
+library(purrr)
 
-state_tibble <- state_tibble %>% 
+# 1️⃣ Scrape all wikitables with %>%
+wiki_url <- "https://en.wikipedia.org/wiki/List_of_regions_of_the_United_States"
+tbls <- wiki_url %>%
+  read_html() %>%
+  html_elements("table.wikitable") %>%
+  map(html_table, fill = TRUE)
+
+# 2️⃣ Pick the one with a “Division” column
+div_raw <- tbls %>%
+  keep(~ any(str_detect(names(.x), regex("Division", ignore_case = TRUE)))) %>%
+  .[[1]]
+
+# 3️⃣ Tidy into a state‐abbrev → division lookup
+division_tbl <- div_raw %>%
+  select(division = Division, states = 3) %>%     # col 3 lists states
+  mutate(states = str_remove_all(states, "\\[[^]]*\\]")) %>%  
+  separate_rows(states, sep = "[,\\n]") %>%  
+  mutate(states = str_trim(states)) %>%  
+  filter(states != "") %>%  
+  mutate(state = state.abb[match(states, state.name)]) %>%  
+  filter(!is.na(state)) %>%  
+  distinct(state, division)
+
+# 4️⃣ Re‐build your non‐county tibble (if needed)
+county_idx   <- grep(", \\w\\w$", long_updated$area_name)
+state_tibble <- long_updated[-county_idx, ]
+
+# 5️⃣ Extract USPS code from full state name & join
+state_tibble <- state_tibble %>%
   mutate(
-    state  = str_sub(area_name, -2, -1),        # “NC”, “SC”, etc.
-    division = case_when(
-      state %in% division_tbl$state ~
-        division_tbl$division[match(state, division_tbl$state)],
-      TRUE ~ "ERROR"                            # UNITED STATES, Puerto Rico, etc.
-    )
+    state = if_else(area_name %in% state.name,
+                    state.abb[match(area_name, state.name)],
+                    NA_character_)
+  ) %>%
+  left_join(division_tbl, by = "state") %>%
+  mutate(
+    division = if_else(is.na(division), "ERROR", division)
   )
 
-# quickly inspect
-head(county_tibble, 10)
-head(state_tibble,  10)
+# 6️⃣ CHECK the results
+all_errors <- all(state_tibble$division == "ERROR")
+cat("All divisions are ERROR? ", all_errors, "\n\n")
+
+print(table(state_tibble$division))
+
+# 7️⃣ If it’s still all ERROR, inspect which names failed to map:
+if (all_errors) {
+  cat("\nUnmatched area_name values:\n")
+  print(state_tibble %>% 
+          distinct(area_name) %>% 
+          filter(!area_name %in% state.name))
+}
+
 ```
 
+```         
+```
+
+### Requirements 
+
+```{r}
+library(tidyverse)
+library(rvest)
+library(purrr)
+library(tidyr)
+library(stringr)
+```
+
+### Step 1&2
+
+```{# ─── 1) read_and_pivot(): STEPS 1 & 2 ─────────────────────────────────────}
+# Reads a CSV from `url`, selects Area_name, STCOU, cols ending in “D”,
+# then pivots to long format. `value_var` names the value column.
+read_and_pivot <- function(url, value_var = "enrollment") {
+  read_csv(url, show_col_types = FALSE) %>%
+    select(
+      area_name = Area_name,
+      STCOU,
+      ends_with("D")
+    ) %>%
+    pivot_longer(
+      cols           = -c(area_name, STCOU),
+      names_to       = "raw_var",
+      values_to      = value_var,
+      values_drop_na = TRUE
+    )
+}
+```
+
+### Step 3 
+
+```{r}
+# ─── 2) parse_raw(): STEP 3 ───────────────────────────────────────────────
+# Extracts `year` and `measurement` from the `raw_var` column.
+parse_raw <- function(df) {
+  df %>%
+    mutate(
+      yr_code     = str_sub(raw_var, -3, -2),
+      year        = as.integer(if_else(
+                       as.integer(yr_code) <= 30,
+                       paste0("20", yr_code),
+                       paste0("19", yr_code)
+                     )),
+      measurement = str_sub(raw_var, 1, 7)
+    ) %>%
+    select(-yr_code)
+}
+
+```
+
+```{r}
+# ─── 3) add_state_county(): STEP 5 ────────────────────────────────────────
+# For county-level rows, adds `state` = last two letters of area_name.
+add_state_county <- function(county_df) {
+  county_df %>%
+    mutate(state = str_sub(area_name, -2, -1))
+}
+```
+
+```{r}
+# ─── 4) add_division_state(): STEP 6 ─────────────────────────────────────
+# Scrapes the Census “Regions & Divisions” table from Wikipedia,
+# builds a state→division lookup, then adds `division` (or "ERROR").
+add_division_state <- function(state_df) {
+  # build lookup
+  wiki_url <- "https://en.wikipedia.org/wiki/List_of_regions_of_the_United_States"
+  division_tbl <- wiki_url %>%
+    read_html() %>%
+    html_elements("table.wikitable") %>%
+    map(html_table, fill = TRUE) %>%
+    keep(~ any(str_detect(names(.x), regex("Division", ignore_case = TRUE)))) %>%
+    .[[1]] %>%
+    select(division = Division, states = 3) %>%
+    mutate(states = str_remove_all(states, "\\[[^]]*\\]")) %>%
+    separate_rows(states, sep = "[,\\n]") %>%
+    mutate(states = str_trim(states)) %>%
+    filter(states != "") %>%
+    mutate(state = state.abb[match(states, state.name)]) %>%
+    filter(!is.na(state)) %>%
+    distinct(state, division)
+
+  # annotate your data
+  state_df %>%
+    mutate(
+      state = if_else(area_name %in% state.name,
+                      state.abb[match(area_name, state.name)],
+                      NA_character_)
+    ) %>%
+    left_join(division_tbl, by = "state") %>%
+    mutate(division = if_else(is.na(division), "ERROR", division))
+}
+
+```
+
+```{r}
+# ─── 5) make_tibbles(): STEP 4 + calls 5 & 6 ──────────────────────────────
+# Splits the parsed-long data into county vs non-county, then applies
+# add_state_county() and add_division_state() to each side.
+make_tibbles <- function(parsed_df) {
+  idx       <- grep(", \\w\\w$", parsed_df$area_name)
+  county_df <- parsed_df[idx, ] %>% add_state_county()
+  state_df  <- parsed_df[-idx, ] %>% add_division_state()
+  list(county = county_df, state = state_df)
+}
+
+```
