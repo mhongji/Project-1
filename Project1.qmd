@@ -1,0 +1,9 @@
+---
+title: "Project 1"
+author: 
+  - Hongjing Mao
+  - Yuhan Hu
+date: "2025-06-14"
+format: pdf
+editor: visual
+---
