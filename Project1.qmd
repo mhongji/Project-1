@@ -88,3 +88,15 @@ class(state_tibble)  <- c("state",  class(state_tibble))
 head(county_tibble, 10)
 head(state_tibble,  10)
 ```
+
+### Step 5: Create new variable
+
+```{r}
+# ---- Step 5: tag counties with 2-letter state code -----------------------
+library(stringr)
+
+county_tibble <- county_tibble %>% 
+  mutate(
+    state = str_sub(area_name, -2, -1)   # grab the “DD” after the comma
+  )
+```
