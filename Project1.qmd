@@ -7,3 +7,19 @@ date: "2025-06-14"
 format: pdf
 editor: visual
 ---
+
+```{r}
+# ---- Step 1 ---------------------------------------------------------------
+library(tidyverse)
+
+url <- "https://www4.stat.ncsu.edu/~online/datasets/EDU01a.csv"
+
+edu01a <- read_csv(url, show_col_types = FALSE) %>% 
+  select(
+    area_name = Area_name,   # rename
+    STCOU,
+    ends_with("D")           # keep every column ending in “D”
+  )
+
+head(edu01a, 5)              # display first 5 rows
+```
