@@ -8,6 +8,12 @@ format: pdf
 editor: visual
 ---
 
+## Data processing
+
+### First steps
+
+### Step 1
+
 ```{r}
 # ---- Step 1 ---------------------------------------------------------------
 library(tidyverse)
@@ -22,4 +28,21 @@ edu01a <- read_csv(url, show_col_types = FALSE) %>%
   )
 
 head(edu01a, 5)              # display first 5 rows
+```
+
+### Step 2
+
+```{r}
+# ---- Step 2: wide → long --------------------------------------------------
+library(tidyr)
+
+edu01a_long <- edu01a %>% 
+  pivot_longer(
+    cols  = -c(area_name, STCOU),   # every “D” column
+    names_to  = "raw_var",          # original census column name
+    values_to = "enrollment",       # numeric value
+    values_drop_na = TRUE           # drop empty cells, if any
+  )
+
+head(edu01a_long, 5)                # verify first 5 rows
 ```
