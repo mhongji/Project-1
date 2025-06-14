@@ -17,28 +17,26 @@ url <- "https://www4.stat.ncsu.edu/~online/datasets/EDU01a.csv"
 
 edu01a <- read_csv(url, show_col_types = FALSE) %>% 
   select(
-    area_name = Area_name,   # rename
+    area_name = Area_name,   
     STCOU,
-    ends_with("D")           # keep every column ending in “D”
+    ends_with("D")          
   )
 
-head(edu01a, 5)              # display first 5 rows
+head(edu01a, 5)              
 ```
 
 ## Step 2: wide string to long string
 
 ```{r}
 library(tidyr)
-
 edu01a_long <- edu01a %>% 
   pivot_longer(
-    cols  = -c(area_name, STCOU),   # every “D” column
-    names_to  = "raw_var",          # original census column name
-    values_to = "enrollment",       # numeric value
-    values_drop_na = TRUE           # drop empty cells, if any
+    cols  = -c(area_name, STCOU),   
+    names_to  = "raw_var",          
+    values_to = "enrollment",       
+    values_drop_na = TRUE          
   )
-
-head(edu01a_long, 5)                # verify first 5 rows
+head(edu01a_long, 5)               
 ```
 
 ## Step 3: Parse variable name string
@@ -49,13 +47,13 @@ long_updated <- edu01a_long %>%
     # last two digits before the "D"
     yr_two      = substr(raw_var, nchar(raw_var) - 2, nchar(raw_var) - 1),  # e.g. "97" or "02"
     year        = as.integer(
-                   if_else(as.integer(yr_two) <= 30,  # 00-30 → 2000-2030
+                   if_else(as.integer(yr_two) <= 30,  
                            paste0("20", yr_two),
-                           paste0("19", yr_two))      # 31-99 → 1931-1999
+                           paste0("19", yr_two))      
                  ),
-    measurement = substr(raw_var, 1, 7)               # first 3 chars + next 4 digits
+    measurement = substr(raw_var, 1, 7)               
   ) %>% 
-  select(-yr_two)                                     # helper no longer needed
+  select(-yr_two)                                     
 
 head(long_updated, 5)
 ```
@@ -66,11 +64,10 @@ head(long_updated, 5)
 library(dplyr)
 library(stringr)
 
-# rows whose Area_name ends “, XX” → county measurements
 county_idx <- grep(", \\w\\w$", long_updated$area_name)
 
 county_tibble <- long_updated[county_idx, ] %>% 
-  mutate(area_name = str_trim(area_name))          # tidy up trailing spaces
+  mutate(area_name = str_trim(area_name))          
 class(county_tibble) <- c("county", class(county_tibble))
 
 state_tibble  <- long_updated[-county_idx, ]
@@ -85,14 +82,14 @@ head(state_tibble,  10)
 
 ```{r}
 library(stringr)
-
-county_tibble <- county_tibble %>% 
+new_county_tibble <- county_tibble %>% 
   mutate(
-    state = str_sub(area_name, -2, -1)   # grab the “DD” after the comma
+    state = str_sub(area_name, -2, -1) 
   )
+head(new_county_tibble, 10)
 ```
 
-## Step 6: Add “division” to non-county (state) rows
+## Step 6: Create new "division" variables
 
 ```{r}
 # ---- STEP 6 · rebuild & test division mapping ----------------------------
@@ -170,18 +167,19 @@ library(tidyr)
 library(stringr)
 ```
 
-### Step 1&2
 
-```{# ─── 1) read_and_pivot(): STEPS 1 & 2 ─────────────────────────────────────}
-# Reads a CSV from `url`, selects Area_name, STCOU, cols ending in “D”,
-# then pivots to long format. `value_var` names the value column.
+
+
+### Step 1&2
+```{r}
+#── 1) read_and_pivot(): STEPS 1 & 2 ────────────────────────────────────────
 read_and_pivot <- function(url, value_var = "enrollment") {
-  read_csv(url, show_col_types = FALSE) %>%
+  read_csv(url, show_col_types = FALSE) %>% 
     select(
       area_name = Area_name,
       STCOU,
       ends_with("D")
-    ) %>%
+    ) %>% 
     pivot_longer(
       cols           = -c(area_name, STCOU),
       names_to       = "raw_var",
@@ -189,15 +187,24 @@ read_and_pivot <- function(url, value_var = "enrollment") {
       values_drop_na = TRUE
     )
 }
+
+# ▶ Test it on EDU01b.csv
+edu01b_long <- read_and_pivot("https://www4.stat.ncsu.edu/~online/datasets/EDU01b.csv")
+head(edu01b_long, 5)
+
 ```
 
-### Step 3 
 
+
+
+
+
+### Step 2 & 3 
 ```{r}
-# ─── 2) parse_raw(): STEP 3 ───────────────────────────────────────────────
-# Extracts `year` and `measurement` from the `raw_var` column.
+#── 2) parse_raw(): STEP 3 ─────────────────────────────────────────────────
+#   Extracts `year` and `measurement` from the raw column names.
 parse_raw <- function(df) {
-  df %>%
+  df %>% 
     mutate(
       yr_code     = str_sub(raw_var, -3, -2),
       year        = as.integer(if_else(
@@ -206,27 +213,37 @@ parse_raw <- function(df) {
                        paste0("19", yr_code)
                      )),
       measurement = str_sub(raw_var, 1, 7)
-    ) %>%
+    ) %>% 
     select(-yr_code)
 }
 
+# ▶ Test it
+edu01b_parsed <- parse_raw(edu01b_long)
+head(edu01b_parsed, 5)
 ```
 
+### Step 5
 ```{r}
-# ─── 3) add_state_county(): STEP 5 ────────────────────────────────────────
-# For county-level rows, adds `state` = last two letters of area_name.
+#── 3) add_state_county(): STEP 5 ──────────────────────────────────────────
+#   For county‐level rows, grab the ", XX" suffix as `state`.
 add_state_county <- function(county_df) {
-  county_df %>%
+  county_df %>% 
     mutate(state = str_sub(area_name, -2, -1))
 }
+
+# ▶ Test it on the county subset
+county_subset <- edu01b_parsed %>% filter(str_detect(area_name, ", \\w\\w$"))
+head(add_state_county(county_subset), 5)
 ```
 
+
+### Step 6 
 ```{r}
-# ─── 4) add_division_state(): STEP 6 ─────────────────────────────────────
-# Scrapes the Census “Regions & Divisions” table from Wikipedia,
-# builds a state→division lookup, then adds `division` (or "ERROR").
+#── 4) add_division_state(): STEP 6 ────────────────────────────────────────
+#   Scrapes Wikipedia, builds a state→division lookup, then tags each state
+#   row with its division (or "ERROR" for non‐states).
 add_division_state <- function(state_df) {
-  # build lookup
+  # build the lookup once
   wiki_url <- "https://en.wikipedia.org/wiki/List_of_regions_of_the_United_States"
   division_tbl <- wiki_url %>%
     read_html() %>%
@@ -254,17 +271,15 @@ add_division_state <- function(state_df) {
     mutate(division = if_else(is.na(division), "ERROR", division))
 }
 
+# ▶ Test it on the non‐county subset
+state_subset <- edu01b_parsed %>% filter(!str_detect(area_name, ", \\w\\w$"))
+head(add_division_state(state_subset), 5)
+
+
+
+
 ```
 
-```{r}
-# ─── 5) make_tibbles(): STEP 4 + calls 5 & 6 ──────────────────────────────
-# Splits the parsed-long data into county vs non-county, then applies
-# add_state_county() and add_division_state() to each side.
-make_tibbles <- function(parsed_df) {
-  idx       <- grep(", \\w\\w$", parsed_df$area_name)
-  county_df <- parsed_df[idx, ] %>% add_state_county()
-  state_df  <- parsed_df[-idx, ] %>% add_division_state()
-  list(county = county_df, state = state_df)
-}
+
 
 ```
