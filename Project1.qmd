@@ -10,9 +10,7 @@ editor: visual
 
 ## Data processing
 
-### First steps
-
-### Step 1
+## Step 1
 
 ```{r}
 # ---- Step 1 ---------------------------------------------------------------
@@ -30,7 +28,7 @@ edu01a <- read_csv(url, show_col_types = FALSE) %>%
 head(edu01a, 5)              # display first 5 rows
 ```
 
-### Step 2
+## Step 2
 
 ```{r}
 # ---- Step 2: wide → long --------------------------------------------------
@@ -45,4 +43,48 @@ edu01a_long <- edu01a %>%
   )
 
 head(edu01a_long, 5)                # verify first 5 rows
+```
+
+## Step 3: Parse variable name string
+
+```{r}
+# ---- Step 3: parse variable name ------------------------------------------
+library(stringr)
+
+long_updated <- edu01a_long %>% 
+  mutate(
+    # last two digits before the "D"
+    yr_two      = str_sub(raw_var, -3, -2),          # e.g. "97" or "02"
+    year        = as.integer(
+                   if_else(as.integer(yr_two) <= 30,  # 00-30 → 2000-2030
+                           paste0("20", yr_two),
+                           paste0("19", yr_two))      # 31-99 → 1931-1999
+                 ),
+    measurement = str_sub(raw_var, 1, 7)             # first 3 chars + next 4 digits
+  ) %>% 
+  select(-yr_two)                                     # helper no longer needed
+
+head(long_updated, 5)
+```
+
+## Step 4: Separate county vs non-county data & add classes
+
+```{r}
+# ---- Step 4: county vs. non-county ---------------------------------------
+library(dplyr)
+library(stringr)
+
+# rows whose Area_name ends “, XX” → county measurements
+county_idx <- grep(", \\w\\w$", long_updated$area_name)
+
+county_tibble <- long_updated[county_idx, ] %>% 
+  mutate(area_name = str_trim(area_name))          # tidy up trailing spaces
+class(county_tibble) <- c("county", class(county_tibble))
+
+state_tibble  <- long_updated[-county_idx, ]
+class(state_tibble)  <- c("state",  class(state_tibble))
+
+# quick check: first 10 rows of each
+head(county_tibble, 10)
+head(state_tibble,  10)
 ```
