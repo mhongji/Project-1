@@ -157,7 +157,7 @@ if (all_errors) {
 ```         
 ```
 
-### Requirements 
+### Requirements
 
 ```{r}
 library(tidyverse)
@@ -167,10 +167,8 @@ library(tidyr)
 library(stringr)
 ```
 
-
-
-
 ### Step 1&2
+
 ```{r}
 #── 1) read_and_pivot(): STEPS 1 & 2 ────────────────────────────────────────
 read_and_pivot <- function(url, value_var = "enrollment") {
@@ -194,12 +192,8 @@ head(edu01b_long, 5)
 
 ```
 
+### Step 2 & 3
 
-
-
-
-
-### Step 2 & 3 
 ```{r}
 #── 2) parse_raw(): STEP 3 ─────────────────────────────────────────────────
 #   Extracts `year` and `measurement` from the raw column names.
@@ -223,6 +217,7 @@ head(edu01b_parsed, 5)
 ```
 
 ### Step 5
+
 ```{r}
 #── 3) add_state_county(): STEP 5 ──────────────────────────────────────────
 #   For county‐level rows, grab the ", XX" suffix as `state`.
@@ -236,8 +231,8 @@ county_subset <- edu01b_parsed %>% filter(str_detect(area_name, ", \\w\\w$"))
 head(add_state_county(county_subset), 5)
 ```
 
+### Step 6
 
-### Step 6 
 ```{r}
 #── 4) add_division_state(): STEP 6 ────────────────────────────────────────
 #   Scrapes Wikipedia, builds a state→division lookup, then tags each state
@@ -275,10 +270,6 @@ add_division_state <- function(state_df) {
 state_subset <- edu01b_parsed %>% filter(!str_detect(area_name, ", \\w\\w$"))
 head(add_division_state(state_subset), 5)
 
-
-
-
-```
 
 
 
