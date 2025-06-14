@@ -48,24 +48,22 @@ head(edu01a_long, 5)                # verify first 5 rows
 ## Step 3: Parse variable name string
 
 ```{r}
-# ---- Step 3: parse variable name ------------------------------------------
-library(stringr)
-
 long_updated <- edu01a_long %>% 
   mutate(
     # last two digits before the "D"
-    yr_two      = str_sub(raw_var, -3, -2),          # e.g. "97" or "02"
+    yr_two      = substr(raw_var, nchar(raw_var) - 2, nchar(raw_var) - 1),  # e.g. "97" or "02"
     year        = as.integer(
                    if_else(as.integer(yr_two) <= 30,  # 00-30 → 2000-2030
                            paste0("20", yr_two),
                            paste0("19", yr_two))      # 31-99 → 1931-1999
                  ),
-    measurement = str_sub(raw_var, 1, 7)             # first 3 chars + next 4 digits
+    measurement = substr(raw_var, 1, 7)               # first 3 chars + next 4 digits
   ) %>% 
   select(-yr_two)                                     # helper no longer needed
 
 head(long_updated, 5)
 ```
+
 
 ## Step 4: Separate county vs non-county data & add classes
 
