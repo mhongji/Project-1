@@ -3,15 +3,13 @@ title: "Project 1"
 author:
   - Hongjing Mao
   - Yuhan Hu
-date: "2025-06-14"
+date: "2025‐06‐14"
 output:
   pdf_document:
     keep_tex: true
 geometry: margin=1in
-header-includes:
-  - \setlength{\emergencystretch}{3em}
-  - \sloppy
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
