@@ -368,6 +368,79 @@ plot.county <- function(df,
 }
 
 # Example Usage:
-plot(edu_combined$state,  var_name = "enrollment")
+plot.county(county_tibble,  var_name = "enrollment")
 ```
 
+
+## Put it together
+```{r put-it-together, message=FALSE}
+## 1) Load url
+edu_a <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/EDU01a.csv",
+                    value_var = "enrollment")
+edu_b <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/EDU01b.csv",
+                    value_var = "enrollment")
+
+## 2) Combine
+edu_combined <- combine_two(edu_a, edu_b)
+
+# Inspect structure: [[1]] = county, [[2]] = state
+str(edu_combined)
+
+## 3) Extract the state-level tibble via indexing and plot it
+state_df  <- edu_combined[[2]]   
+plot(state_df, var_name = "enrollment")
+
+## 4) Extract the county-level tibble and plot with various options
+county_df <- edu_combined[[1]]   
+
+# 4a) NC, top 20 counties
+plot.county(county_df,
+     var_name   = "enrollment",
+     state_name = "NC",
+     top_bottom = "top",
+     n          = 20)
+
+# 4b) SC, bottom 7 counties
+plot.county(county_df,
+     var_name   = "enrollment",
+     state_name = "SC",
+     top_bottom = "bottom",
+     n          = 7)
+
+# 4c) defaults (all states, top 5)
+plot.county(county_df,
+     var_name = "enrollment")
+
+# 4d) PA, top 8 counties
+plot.county(county_df,
+     var_name   = "enrollment",
+     state_name = "PA",
+     top_bottom = "top",
+     n          = 8)
+```
+
+# Process the four PST01 datasets
+```{r}
+pst_01a <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/PST01a.csv",
+                    value_var = "enrollment")
+pst_01b <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/PST01b.csv",
+                    value_var = "enrollment")
+pst_01c <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/PST01c.csv",
+                    value_var = "enrollment")
+pst_01d <- my_wrapper("https://www4.stat.ncsu.edu/~online/datasets/PST01d.csv",
+                    value_var = "enrollment")
+
+## 2) Combine
+pst_combined_1 <- combine_two(pst_01a, pst_01b)
+pst_combined_2 <- combine_two(pst_01c, pst_01d)
+pst_combined <- combine_two(pst_combined_1, pst_combined_2)
+
+## 3) Plot the PST01 combined results on State data
+plot.state(pst_combined[[2]],  var_name = "enrollment")
+
+## 3) Plot the PST01 combined results on Specified County data
+plot.county(pst_combined[[1]], var_name = "enrollment", state_name = "CA", top_bottom = "top",    n = 15)
+plot.county(pst_combined[[1]], var_name = "enrollment", state_name = "TX", top_bottom = "top",     n = 4)
+plot.county(pst_combined[[1]], var_name = "enrollment")  # defaults
+plot.county(pst_combined[[1]], var_name = "enrollment", state_name = "NY", top_bottom = "top",    n = 10)
+```
