@@ -1,12 +1,25 @@
 ---
 title: "Project 1"
-author: 
+author:
   - Hongjing Mao
   - Yuhan Hu
 date: "2025-06-14"
-format: pdf
-editor: visual
+output:
+  pdf_document:
+    keep_tex: true
+geometry: margin=1in
+header-includes:
+  - \setlength{\emergencystretch}{3em}
+  - \sloppy
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  tidy       = TRUE,
+  tidy.opts  = list(width.cutoff = 60)
+)
+options(width = 60)
+```
 
 ## Step 1: Data preprocessing
 
@@ -92,7 +105,6 @@ head(new_county_tibble, 10)
 ## Step 6: Create new "division" variables
 
 ```{r}
-{r}
 state_division <- c(
   "CONNECTICUT" = "New England", "MAINE" = "New England", "MASSACHUSETTS" = "New England",
   "NEW HAMPSHIRE" = "New England", "RHODE ISLAND" = "New England", "VERMONT" = "New England",
@@ -144,6 +156,7 @@ library(purrr)
 library(tidyr)
 library(stringr)
 ```
+
 ## Global helper: mapping states to census divisions
 ```{r}
 state_division <- c(
@@ -224,7 +237,6 @@ head(edu01a_parsed, 5)
 ```
 
 ## Step 5:for county data, extract state code and set class
-
 ```{r}
 add_state_county <- function(county_df) {
   county_df %>% 
@@ -321,9 +333,6 @@ plot.state <- function(df, var_name = "enrollment", ...) {
       title = paste("Mean", var_name, "by Division over Time")
     )
 }
-
-# Test:
-plot.state (state_tibble, var_name = "enrollment")
 ```
 ## 2) County-level plot method
 ```{r}
@@ -366,9 +375,6 @@ plot.county <- function(df,
       )
     )
 }
-
-# Example Usage:
-plot.county(county_tibble,  var_name = "enrollment")
 ```
 
 
