@@ -302,4 +302,72 @@ head(edu_combined$county,  5)
 head(edu_combined$state,   5)
 ```
 
+## Plot function:
+# 1) State-level plot method
+```{r}
+plot.state <- function(df, var_name = "enrollment", ...) {
+  df %>%
+    filter(division != "ERROR") %>%
+    group_by(division, year) %>%
+    summarize(
+      mean_val = mean(.data[[var_name]], na.rm = TRUE),
+      .groups   = "drop"
+    ) %>%
+    ggplot(aes(x = year, y = mean_val, color = division)) +
+    geom_line() +
+    labs(
+      x     = "Year",
+      y     = paste("Mean", var_name),
+      title = paste("Mean", var_name, "by Division over Time")
+    )
+}
+
+# Test:
+plot.state (state_tibble, var_name = "enrollment")
+```
+## 2) County-level plot method
+```{r}
+plot.county <- function(df,
+                        var_name   = "enrollment",
+                        state_name = NULL,
+                        top_bottom = "top",
+                        n          = 5,
+                        ...) {
+  # optionally filter to a single state
+  if (!is.null(state_name)) {
+    df <- df %>% filter(state == state_name)
+  }
+
+  # compute overall means by county
+  means <- df %>%
+    group_by(area_name) %>%
+    summarize(
+      mean_val = mean(.data[[var_name]], na.rm = TRUE),
+      .groups   = "drop"
+    ) %>%
+    arrange(if (top_bottom == "top") desc(mean_val) else mean_val)
+
+  # select the top or bottom N counties
+  selected <- head(means$area_name, n)
+
+  # filter original data to those counties
+  plot_df <- df %>% filter(area_name %in% selected)
+
+  # draw the time series of the raw values
+  ggplot(plot_df, aes(x = year, y = .data[[var_name]], color = area_name)) +
+    geom_line() +
+    labs(
+      x     = "Year",
+      y     = var_name,
+      title = paste(
+        str_to_title(top_bottom), n,
+        "counties",
+        if (!is.null(state_name)) paste("in", state_name) else ""
+      )
+    )
+}
+
+# Example Usage:
+plot(edu_combined$state,  var_name = "enrollment")
+```
 
